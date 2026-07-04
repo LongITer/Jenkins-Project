@@ -7,18 +7,17 @@ pipeline {
     }
 
     stages {
-
-        stage("Cleanup Workspace") {
+        stage('Cleanup Workspace') {
             steps {
                 cleanWs()
             }
         }
 
-        stage("Checkout from SCM") {
+        stage('Checkout from SCM') {
             steps {
                 git branch: 'main',
                     credentialsId: 'github',
-                    url: 'https://github.com/Ashfaque-9x/register-app'
+                    url: 'https://github.com/LongITer/Jenkins-Project'
             }
         }
 
@@ -29,16 +28,16 @@ pipeline {
                 sh 'echo JAVA_HOME=$JAVA_HOME'
             }
         }
-        
-        stage("Build Application") {
+
+        stage('Build Application') {
             steps {
-                sh "mvn clean package"
+                sh 'mvn clean package'
             }
         }
 
-        stage("Test Application") {
+        stage('Test Application') {
             steps {
-                sh "mvn test"
+                sh 'mvn test'
             }
         }
     }
