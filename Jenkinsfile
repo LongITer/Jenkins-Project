@@ -22,6 +22,14 @@ pipeline {
             }
         }
 
+        stage('Check Java') {
+            steps {
+                sh 'java -version'
+                sh 'mvn -version'
+                sh 'echo JAVA_HOME=$JAVA_HOME'
+            }
+        }
+        
         stage("Build Application") {
             steps {
                 sh "mvn clean package"
