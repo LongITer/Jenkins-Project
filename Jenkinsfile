@@ -87,9 +87,21 @@ pipeline {
         stage('Trivy Scan') {
             steps {
                 script {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
-                        sh('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image longiter/register-app-pipeline:latest --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL --format table --pkg-types os')
-                    }
+                    sh """
+                        mkdir -p \$HOME/.cache/trivy
+
+                        docker run --rm \\
+                          -v /var/run/docker.sock:/var/run/docker.sock \\
+                          -v \$HOME/.cache/trivy:/root/.cache/trivy \\
+                          aquasec/trivy:latest image \\
+                          ${IMAGE_NAME}:latest \\
+                          --no-progress \\
+                          --scanners vuln \\
+                          --severity HIGH,CRITICAL \\
+                          --pkg-types os \\
+                          --exit-code 0 \\
+                          --format table || true
+                    """
                 }
             }
         }
@@ -97,8 +109,8 @@ pipeline {
         stage('Cleanup Artifacts') {
             steps {
                 script {
-                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker rmi ${IMAGE_NAME}:latest"
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                    sh "docker rmi ${IMAGE_NAME}:latest || true"
                 }
             }
         }
@@ -108,6 +120,23 @@ pipeline {
                 script {
                     sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-18-142-231-81.ap-southeast-1.compute.amazonaws.com:8080/job/gitops-register-app-cd/buildWithParameters?token=gitops-token'"
                 }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                sh """
+                    docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_NAME}:latest || true
+
+                    docker image prune -af || true
+                    docker builder prune -af || true
+                    docker container prune -f || true
+
+                    rm -rf \$HOME/.cache/trivy || true
+                """
             }
         }
     }
